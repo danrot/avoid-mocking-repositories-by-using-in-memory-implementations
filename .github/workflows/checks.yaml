@@ -6,6 +6,15 @@ on:
 jobs:
     php_checks:
         runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgres:15-alpine
+                env:
+                    POSTGRES_PASSWORD: password
+                ports:
+                    - 5432:5432
+                options:
+                    --health-cmd pg_isready
         steps:
             - uses: actions/checkout@v3
             - uses: shivammathur/setup-php@v2
@@ -16,4 +25,5 @@ jobs:
             - run: composer bin all install
             - run: vendor/bin/phpstan
             - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+            - run: bin/console doctrine:database:create -e test
             - run: vendor/bin/phpunit
