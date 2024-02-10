@@ -1,0 +1,19 @@
+name: checks
+
+on:
+    - push
+
+jobs:
+    php_checks:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.3'
+                  tools: composer:v2
+            - run: composer install
+            - run: composer bin all install
+            - run: vendor/bin/phpstan
+            - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+            - run: vendor/bin/phpunit
