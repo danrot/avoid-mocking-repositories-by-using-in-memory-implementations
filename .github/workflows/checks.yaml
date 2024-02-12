@@ -26,4 +26,8 @@ jobs:
             - run: vendor/bin/phpstan
             - run: vendor/bin/php-cs-fixer fix --dry-run --diff
             - run: bin/console doctrine:database:create -e test
+            - run: |
+                bin/console doctrine:migrations:migrate -e test --no-interaction
+                bin/console doctrine:migrations:migrate 0 -e test --no-interaction
+            - run: bin/console doctrine:migrations:migrate -e test --no-interaction
             - run: vendor/bin/phpunit
