@@ -4,17 +4,19 @@ namespace App\Controller;
 
 use App\Domain\Item;
 use App\Repository\Doctrine\ItemRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Uid\Uuid;
 
-class ItemController extends AbstractController
+#[AsController]
+class ItemController
 {
 	#[Route('/items', methods: ['GET'])]
 	public function list(ItemRepository $itemRepository): JsonResponse
 	{
-		return $this->json($itemRepository->loadAll());
+		return new JsonResponse(array_map($this->transformItemToArray(...), $itemRepository->loadAll()));
 	}
 
 	#[Route('/items', methods: ['POST'])]
@@ -26,6 +28,14 @@ class ItemController extends AbstractController
 
 		$itemRepository->add($item);
 
-		return $this->json($item);
+		return new JsonResponse($this->transformItemToArray($item));
+	}
+
+	/**
+	 * @return array{id: Uuid, title: string, description: string}
+	 */
+	private function transformItemToArray(Item $item): array
+	{
+		return ['id' => $item->getId(), 'title' => $item->getTitle(), 'description' => $item->getDescription()];
 	}
 }
