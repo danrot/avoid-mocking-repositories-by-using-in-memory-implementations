@@ -2,34 +2,23 @@
 
 namespace App\Tests\Controller;
 
-use App\Controller\ItemController;
 use App\Domain\Item;
-use App\Repository\Doctrine\ItemRepository;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\Request;
+use App\Domain\ItemRepositoryInterface;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-class ItemControllerTest extends TestCase
+class ItemControllerTest extends WebTestCase
 {
-	private ItemRepository&MockObject $itemRepository;
-
-	private ItemController $itemController;
-
-	public function setUp(): void
-	{
-		$this->itemRepository = $this->createMock(ItemRepository::class);
-		$this->itemController = new ItemController();
-	}
-
 	public function testList(): void
 	{
-		$this->itemRepository->method('loadAll')->willReturn([
-			new Item('Title 1', 'Description 1'),
-			new Item('Title 2', 'Description 2'),
-		]);
+		$client = static::createClient();
 
-		$response = $this->itemController->list($this->itemRepository);
-		$responseContent = $response->getContent();
+		/** @var ItemRepositoryInterface */
+		$itemRepository = $this->getContainer()->get(ItemRepositoryInterface::class);
+		$itemRepository->add(new Item('Title 1', 'Description 1'));
+		$itemRepository->add(new Item('Title 2', 'Description 2'));
+
+		$client->request('GET', '/items');
+		$responseContent = $client->getResponse()->getContent();
 		$this->assertNotFalse($responseContent);
 		$responseData = json_decode($responseContent);
 
@@ -41,19 +30,38 @@ class ItemControllerTest extends TestCase
 		$this->assertEquals('Description 2', $responseData[1]->description);
 	}
 
+	public function testListFilter(): void
+	{
+		$client = static::createClient();
+
+		/** @var ItemRepositoryInterface */
+		$itemRepository = $this->getContainer()->get(ItemRepositoryInterface::class);
+		$itemRepository->add(new Item('Title 1', 'Description 1'));
+		$itemRepository->add(new Item('Title 2', 'Description 2'));
+
+		$client->request('GET', '/items?titleFilter=Title 2');
+		$responseContent = $client->getResponse()->getContent();
+		$this->assertNotFalse($responseContent);
+		$responseData = json_decode($responseContent);
+
+		$this->assertIsArray($responseData);
+		$this->assertCount(1, $responseData);
+		$this->assertEquals('Title 2', $responseData[0]->title);
+		$this->assertEquals('Description 2', $responseData[0]->description);
+	}
+
 	public function testAdd(): void
 	{
-		$this->itemRepository
-			->expects($this->once())
-			->method('add')
-			->with($this->callback(function (Item $item) {
-				return $item->getTitle() === 'Title' && $item->getDescription() === 'Description';
-			}))
-		;
+		$client = static::createClient();
 
-		$request = $this->createStub(Request::class);
-		$request->method('getContent')->willReturn(json_encode(['title' => 'Title', 'description' => 'Description']));
+		/** @var ItemRepositoryInterface */
+		$itemRepository = $this->getContainer()->get(ItemRepositoryInterface::class);
 
-		$this->itemController->create($request, $this->itemRepository);
+		$client->jsonRequest('POST', '/items', ['title' => 'Title', 'description' => 'Description']);
+
+		$items = $itemRepository->loadAll();
+		$this->assertCount(1, $items);
+		$this->assertEquals('Title', $items[0]->getTitle());
+		$this->assertEquals('Description', $items[0]->getDescription());
 	}
 }

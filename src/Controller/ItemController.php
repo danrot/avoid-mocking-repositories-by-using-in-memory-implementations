@@ -3,7 +3,7 @@
 namespace App\Controller;
 
 use App\Domain\Item;
-use App\Repository\Doctrine\ItemRepository;
+use App\Domain\ItemRepositoryInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -14,13 +14,15 @@ use Symfony\Component\Uid\Uuid;
 class ItemController
 {
 	#[Route('/items', methods: ['GET'])]
-	public function list(ItemRepository $itemRepository): JsonResponse
+	public function list(Request $request, ItemRepositoryInterface $itemRepository): JsonResponse
 	{
-		return new JsonResponse(array_map($this->transformItemToArray(...), $itemRepository->loadAll()));
+		$titleFilter = $request->query->getString('titleFilter');
+		$items = $titleFilter ? $itemRepository->loadFilteredByTitle($titleFilter) : $itemRepository->loadAll();
+		return new JsonResponse(array_map($this->transformItemToArray(...), $items));
 	}
 
 	#[Route('/items', methods: ['POST'])]
-	public function create(Request $request, ItemRepository $itemRepository): JsonResponse
+	public function create(Request $request, ItemRepositoryInterface $itemRepository): JsonResponse
 	{
 		/** @var \stdClass */
 		$data = json_decode($request->getContent());
